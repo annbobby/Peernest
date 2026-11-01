@@ -18,6 +18,7 @@ const { registerPaymentRoutes } = require('./routes/payments');
 const { registerNotificationRoutes } = require('./routes/notifications');
 const { registerReviewRoutes } = require('./routes/reviews');
 const { registerAdminRoutes } = require('./routes/admin');
+const { registerActivityRoutes } = require('./routes/activities');
 
 // Initialize Database Schema & Seed Data
 initDatabase();
@@ -77,6 +78,7 @@ registerPaymentRoutes(router);
 registerNotificationRoutes(router);
 registerReviewRoutes(router);
 registerAdminRoutes(router);
+registerActivityRoutes(router);
 
 // Static file serving helper
 const MIME_TYPES = {
@@ -110,7 +112,7 @@ function serveStaticFile(res, filePath) {
 }
 
 // Master HTTP Request Handler
-const server = http.createServer((req, res) => {
+function handleRequest(req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -124,6 +126,15 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
   req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+
+  // If body is already parsed (e.g. Vercel serverless functions)
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    const matched = router.match(req.method, pathname);
+    if (matched) {
+      req.params = matched.params;
+      return matched.handler(req, res);
+    }
+  }
 
   // Buffer incoming JSON body for POST/PUT requests
   let bodyData = '';
@@ -143,7 +154,7 @@ const server = http.createServer((req, res) => {
       } catch (e) {
         req.body = {};
       }
-    } else {
+    } else if (!req.body) {
       req.body = {};
     }
 
@@ -168,7 +179,9 @@ const server = http.createServer((req, res) => {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Endpoint not found.' }));
   });
-});
+}
+
+const server = http.createServer(handleRequest);
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 if (require.main === module) {
@@ -181,4 +194,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server };
+module.exports = { server, handleRequest, router };

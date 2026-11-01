@@ -192,7 +192,10 @@
         renderLanding(content);
         break;
       case 'activities':
-        renderActivitySelector(content);
+        renderActivitySelector(content, params);
+        break;
+      case 'my_activities':
+        renderActivitySelector(content, { tab: 'my', ...params });
         break;
       case 'parcels_available':
         renderAvailableParcels(content);
@@ -314,6 +317,10 @@
           <button onclick="window.app.navigate('activities')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 transition flex items-center gap-1.5">
             <i data-lucide="grid" class="w-3.5 h-3.5"></i>
             <span>Activities</span>
+          </button>
+          <button onclick="window.app.navigate('my_activities')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition flex items-center gap-1.5">
+            <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
+            <span>My Activities</span>
           </button>
         </div>
 
@@ -467,97 +474,379 @@
     `;
   }
 
-  // --------------------------------------------------------------------------
+    // --------------------------------------------------------------------------
   // ACTIVITY SELECTION DASHBOARD ("What would you like to do today?")
+  // & DEDICATED "MY REQUESTS & PERFORMED ACTIVITIES" PAGE WITH UNIQUE TRACKING
   // --------------------------------------------------------------------------
-  function renderActivitySelector(container) {
-    const selected = (state.profile && state.profile.selected_activities)
-      ? (typeof state.profile.selected_activities === 'string' ? JSON.parse(state.profile.selected_activities) : state.profile.selected_activities)
-      : ['request_parcel', 'borrow_items'];
+  let myActivitiesCache = null;
+  let currentActivityFilter = 'all';
+
+  function renderActivitySelector(container, options = {}) {
+    const defaultTab = (options && options.tab === 'my') ? 'my' : 'explore';
 
     container.innerHTML = `
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="text-center max-w-2xl mx-auto mb-12">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <!-- Top Title & Navigation Sub-Tabs -->
+        <div class="text-center max-w-2xl mx-auto mb-8">
           <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Campus Activity Hub</span>
           <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mt-3">What would you like to do today?</h1>
-          <p class="mt-3 text-slate-600 text-sm">Choose any activity below. You can participate in all four roles simultaneously at any time.</p>
+          <p class="mt-2 text-slate-600 text-sm">Participate in all campus services simultaneously, or track every request and delivery you have performed.</p>
+
+          <!-- Interactive Sub-Page Switcher Pills -->
+          <div class="inline-flex items-center p-1.5 bg-slate-200/80 rounded-2xl mt-6 shadow-inner gap-1">
+            <button id="tab-btn-explore" onclick="window.app.switchActivityTab('explore')" class="px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${defaultTab === 'explore' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}">
+              <i data-lucide="compass" class="w-4 h-4"></i>
+              <span>Explore Services</span>
+            </button>
+            <button id="tab-btn-my" onclick="window.app.switchActivityTab('my')" class="px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${defaultTab === 'my' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}">
+              <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+              <span>My Requests & Performed Activities</span>
+              <span id="tab-my-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold">...</span>
+            </button>
+          </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Card 1: Deliver Parcels -->
-          <div onclick="window.app.navigate('parcels_available')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-14 h-14 rounded-2xl bg-amber-50 group-hover:bg-amber-100 text-amber-600 flex items-center justify-center transition">
-                <i data-lucide="bike" class="w-7 h-7"></i>
+        <!-- VIEW 1: Explore 4 Services Cards -->
+        <div id="activity-explore-view" class="${defaultTab === 'explore' ? '' : 'hidden'}">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Card 1: Deliver Parcels -->
+            <div onclick="window.app.navigate('parcels_available')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-amber-50 group-hover:bg-amber-100 text-amber-600 flex items-center justify-center transition">
+                  <i data-lucide="bike" class="w-7 h-7"></i>
+                </div>
+                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Earn ₹12 - ₹30 / delivery</span>
               </div>
-              <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Earn ₹12 - ₹30 / delivery</span>
+              <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">1. Deliver Parcels</h3>
+              <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+                Accept available parcel requests from students, pick up packages from the Campus Parcel Centre, and deliver them to designated hostel blocks for immediate earnings.
+              </p>
+              <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
+                <span class="flex items-center gap-1">Open Delivery Board <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                <button onclick="event.stopPropagation(); window.app.switchActivityTab('my', 'parcel_delivery')" class="text-slate-400 hover:text-slate-700">My Deliveries</button>
+              </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">1. Deliver Parcels</h3>
-            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
-              Accept available parcel requests from students, pick up packages from the Campus Parcel Centre, and deliver them to designated hostel blocks for immediate earnings.
-            </p>
-            <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              <span class="flex items-center gap-1">Open Delivery Board <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
-              <button onclick="event.stopPropagation(); window.app.navigate('partner_dash')" class="text-slate-400 hover:text-slate-700">Partner Dashboard</button>
+
+            <!-- Card 2: Request Parcel Pickup -->
+            <div onclick="window.app.navigate('parcel_create')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-blue-50 group-hover:bg-blue-100 text-blue-600 flex items-center justify-center transition">
+                  <i data-lucide="package-plus" class="w-7 h-7"></i>
+                </div>
+                <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">From ₹10</span>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">2. Request Parcel Pickup</h3>
+              <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+                Don't have time to walk across campus? Have a fellow student collect your parcel and bring it to your hostel lobby with two-stage OTP security verification.
+              </p>
+              <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
+                <span class="flex items-center gap-1">Create Parcel Request <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                <button onclick="event.stopPropagation(); window.app.switchActivityTab('my', 'parcel_request')" class="text-slate-400 hover:text-slate-700">My Requests</button>
+              </div>
+            </div>
+
+            <!-- Card 3: Lend Items -->
+            <div onclick="window.app.navigate('rental_create')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-purple-50 group-hover:bg-purple-100 text-purple-600 flex items-center justify-center transition">
+                  <i data-lucide="store" class="w-7 h-7"></i>
+                </div>
+                <span class="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">Earn Daily Rent</span>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">3. Lend Items</h3>
+              <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+                List textbooks, Casio scientific calculators, lab coats, hardware kits or sports gear. Earn daily rental income with separate refundable security deposit protection.
+              </p>
+              <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
+                <span class="flex items-center gap-1">Create Item Listing <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                <button onclick="event.stopPropagation(); window.app.switchActivityTab('my', 'lent_item')" class="text-slate-400 hover:text-slate-700">My Lent Gear</button>
+              </div>
+            </div>
+
+            <!-- Card 4: Borrow Items -->
+            <div onclick="window.app.navigate('marketplace')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+              <div class="flex items-center justify-between mb-4">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition">
+                  <i data-lucide="search" class="w-7 h-7"></i>
+                </div>
+                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Marketplace</span>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">4. Borrow Items</h3>
+              <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+                Explore listings from students in your hostel or campus. Rent items for exams, laboratory practicals, projects, or sports sessions with convenient campus handovers.
+              </p>
+              <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
+                <span class="flex items-center gap-1">Browse Catalog <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                <button onclick="event.stopPropagation(); window.app.switchActivityTab('my', 'borrowed_item')" class="text-slate-400 hover:text-slate-700">My Borrowed Gear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: DEDICATED SEPARATE PAGE: My Requests & Performed Activities -->
+        <div id="activity-my-view" class="${defaultTab === 'my' ? '' : 'hidden'} space-y-6">
+          <!-- Universal Search & Track Down Bar -->
+          <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-6 text-white shadow-lg shadow-emerald-700/10">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                  <i data-lucide="search" class="w-5 h-5"></i>
+                  Track Down Request by Unique Code
+                </h2>
+                <p class="text-xs text-emerald-100 mt-1">
+                  Enter any Parcel Code (<span class="font-mono bg-white/20 px-1 rounded">PN-PAR-...</span>), Rental Code (<span class="font-mono bg-white/20 px-1 rounded">RNTL-...</span>), or Courier Reference.
+                </p>
+              </div>
+
+              <div class="w-full md:w-auto flex items-center gap-2">
+                <div class="relative flex-1 md:w-80">
+                  <input id="activity-search-code-input" type="text" placeholder="e.g. PN-PAR-202611-B4C1E2" 
+                    onkeyup="window.app.handleActivitySearchKey(event)"
+                    class="w-full px-4 py-2.5 rounded-xl bg-white/10 placeholder-emerald-200 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-white text-sm font-mono" />
+                </div>
+                <button onclick="window.app.searchOrTrackActivity()" class="px-5 py-2.5 bg-white text-emerald-800 font-bold text-xs rounded-xl hover:bg-emerald-50 transition shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+                  <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                  <span>Track Down</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Card 2: Request Parcel Pickup -->
-          <div onclick="window.app.navigate('parcel_create')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-14 h-14 rounded-2xl bg-blue-50 group-hover:bg-blue-100 text-blue-600 flex items-center justify-center transition">
-                <i data-lucide="package-plus" class="w-7 h-7"></i>
-              </div>
-              <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">From ₹10</span>
+          <!-- Quick Metrics Bar -->
+          <div id="my-activities-metrics" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+              <span class="text-xs font-semibold text-slate-500">Parcel Requests</span>
+              <div id="metric-parcels" class="text-2xl font-bold text-blue-600 mt-1">0</div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">2. Request Parcel Pickup</h3>
-            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
-              Don't have time to walk across campus? Have a fellow student collect your parcel and bring it to your hostel lobby with two-stage OTP security verification.
-            </p>
-            <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              <span class="flex items-center gap-1">Create Parcel Request <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
-              <button onclick="event.stopPropagation(); window.app.navigate('requester_dash')" class="text-slate-400 hover:text-slate-700">My Requests</button>
+            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+              <span class="text-xs font-semibold text-slate-500">Deliveries Done</span>
+              <div id="metric-deliveries" class="text-2xl font-bold text-amber-600 mt-1">0</div>
             </div>
-          </div>
-
-          <!-- Card 3: Lend Items -->
-          <div onclick="window.app.navigate('rental_create')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-14 h-14 rounded-2xl bg-purple-50 group-hover:bg-purple-100 text-purple-600 flex items-center justify-center transition">
-                <i data-lucide="store" class="w-7 h-7"></i>
-              </div>
-              <span class="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">Earn Daily Rent</span>
+            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+              <span class="text-xs font-semibold text-slate-500">Lent Gear</span>
+              <div id="metric-lent" class="text-2xl font-bold text-purple-600 mt-1">0</div>
             </div>
-            <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">3. Lend Items</h3>
-            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
-              List textbooks, Casio scientific calculators, lab coats, hardware kits or sports gear. Earn daily rental income with separate refundable security deposit protection.
-            </p>
-            <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              <span class="flex items-center gap-1">Create Item Listing <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
-              <button onclick="event.stopPropagation(); window.app.navigate('lender_dash')" class="text-slate-400 hover:text-slate-700">Lender Dashboard</button>
+            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+              <span class="text-xs font-semibold text-slate-500">Borrowed Gear</span>
+              <div id="metric-borrowed" class="text-2xl font-bold text-emerald-600 mt-1">0</div>
             </div>
           </div>
 
-          <!-- Card 4: Borrow Items -->
-          <div onclick="window.app.navigate('marketplace')" class="cursor-pointer group p-8 rounded-3xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-14 h-14 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition">
-                <i data-lucide="search" class="w-7 h-7"></i>
-              </div>
-              <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">Marketplace</span>
-            </div>
-            <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition">4. Borrow Items</h3>
-            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
-              Explore listings from students in your hostel or campus. Rent items for exams, laboratory practicals, projects, or sports sessions with convenient campus handovers.
-            </p>
-            <div class="mt-6 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              <span class="flex items-center gap-1">Browse Catalog <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
-              <button onclick="event.stopPropagation(); window.app.navigate('borrower_dash')" class="text-slate-400 hover:text-slate-700">Borrower Dashboard</button>
+          <!-- Filter Sub-Tabs -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-semibold text-slate-600">
+            <button onclick="window.app.filterMyActivities('all')" id="subtab-all" class="px-4 py-2 rounded-xl bg-slate-900 text-white transition whitespace-nowrap">All Activities</button>
+            <button onclick="window.app.filterMyActivities('parcel_request')" id="subtab-parcel_request" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition whitespace-nowrap flex items-center gap-1.5"><i data-lucide="package-plus" class="w-3.5 h-3.5 text-blue-600"></i> My Parcel Requests</button>
+            <button onclick="window.app.filterMyActivities('parcel_delivery')" id="subtab-parcel_delivery" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition whitespace-nowrap flex items-center gap-1.5"><i data-lucide="bike" class="w-3.5 h-3.5 text-amber-600"></i> My Deliveries</button>
+            <button onclick="window.app.filterMyActivities('lent_item')" id="subtab-lent_item" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition whitespace-nowrap flex items-center gap-1.5"><i data-lucide="store" class="w-3.5 h-3.5 text-purple-600"></i> My Lent Gear</button>
+            <button onclick="window.app.filterMyActivities('borrowed_item')" id="subtab-borrowed_item" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 transition whitespace-nowrap flex items-center gap-1.5"><i data-lucide="shopping-bag" class="w-3.5 h-3.5 text-emerald-600"></i> My Borrowed Gear</button>
+          </div>
+
+          <!-- Activities Feed List Container -->
+          <div id="my-activities-list" class="space-y-4">
+            <div class="py-12 text-center text-slate-400">
+              <i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto mb-2 text-emerald-600"></i>
+              <p class="text-sm">Loading your activity records...</p>
             </div>
           </div>
         </div>
       </div>
     `;
+
+    loadAndRenderMyActivities(options.filter || 'all');
+  }
+
+  async function loadAndRenderMyActivities(filter = 'all') {
+    try {
+      const res = await api('/api/activities/my-all');
+      if (!res) return;
+      myActivitiesCache = res;
+
+      // Update badge count
+      const badge = document.getElementById('tab-my-badge');
+      if (badge && res.summary) {
+        badge.innerText = res.summary.totalActivities;
+      }
+
+      // Update metrics
+      const mParcels = document.getElementById('metric-parcels');
+      const mDeliv = document.getElementById('metric-deliveries');
+      const mLent = document.getElementById('metric-lent');
+      const mBorw = document.getElementById('metric-borrowed');
+      if (mParcels && res.summary) mParcels.innerText = res.summary.totalParcelRequests;
+      if (mDeliv && res.summary) mDeliv.innerText = res.summary.totalParcelDeliveries;
+      if (mLent && res.summary) mLent.innerText = res.summary.totalLentItems + res.summary.totalLentBookings;
+      if (mBorw && res.summary) mBorw.innerText = res.summary.totalBorrowedItems;
+
+      renderFilteredActivitiesList(filter);
+    } catch (e) {
+      console.error('Failed to load my activities:', e);
+      const listEl = document.getElementById('my-activities-list');
+      if (listEl) {
+        listEl.innerHTML = `<div class="p-8 text-center text-rose-500 bg-rose-50 rounded-2xl border border-rose-200 text-sm">Failed to load activity records. Please try again.</div>`;
+      }
+    }
+  }
+
+  function renderFilteredActivitiesList(filter = 'all', searchQuery = '') {
+    currentActivityFilter = filter;
+    const listEl = document.getElementById('my-activities-list');
+    if (!listEl || !myActivitiesCache) return;
+
+    // Update subtab active styling
+    ['all', 'parcel_request', 'parcel_delivery', 'lent_item', 'borrowed_item'].forEach(t => {
+      const btn = document.getElementById('subtab-' + t);
+      if (!btn) return;
+      if (t === filter) {
+        btn.className = 'px-4 py-2 rounded-xl bg-slate-900 text-white transition whitespace-nowrap flex items-center gap-1.5';
+      } else {
+        btn.className = 'px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition whitespace-nowrap flex items-center gap-1.5';
+      }
+    });
+
+    // Assemble combined items
+    let items = [];
+    if (filter === 'all' || filter === 'parcel_request') {
+      items = items.concat(myActivitiesCache.parcelRequests || []);
+    }
+    if (filter === 'all' || filter === 'parcel_delivery') {
+      items = items.concat(myActivitiesCache.parcelDeliveries || []);
+    }
+    if (filter === 'all' || filter === 'lent_item') {
+      items = items.concat(myActivitiesCache.lentListings || []);
+      items = items.concat(myActivitiesCache.lentBookings || []);
+    }
+    if (filter === 'all' || filter === 'borrowed_item') {
+      items = items.concat(myActivitiesCache.borrowedItems || []);
+    }
+
+    // Apply text/code search query if present
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      items = items.filter(it => 
+        (it.trackingCode && it.trackingCode.toLowerCase().includes(q)) ||
+        (it.title && it.title.toLowerCase().includes(q)) ||
+        (it.reference && it.reference.toLowerCase().includes(q)) ||
+        (it.status && it.status.toLowerCase().includes(q)) ||
+        (it.destination && it.destination.toLowerCase().includes(q)) ||
+        (it.counterparty && it.counterparty.toLowerCase().includes(q))
+      );
+    }
+
+    if (items.length === 0) {
+      listEl.innerHTML = `
+        <div class="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300 p-8">
+          <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="inbox" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-base font-bold text-slate-800">No requests or activities found</h3>
+          <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            ${searchQuery ? `No records match tracking code or query "${searchQuery}".` : 'You have not performed any activities in this category yet.'}
+          </p>
+          <div class="mt-4">
+            <button onclick="window.app.switchActivityTab('explore')" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs shadow-sm hover:bg-emerald-700 transition">
+              Explore Available Services
+            </button>
+          </div>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+      return;
+    }
+
+    listEl.innerHTML = items.map(item => {
+      const isParcel = item.activityType === 'parcel_request' || item.activityType === 'parcel_delivery';
+      const statusBadge = getStatusBadge(item.status);
+
+      return `
+        <div class="p-6 rounded-3xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition space-y-4">
+          <!-- Top Row: Tracking Code & Status -->
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-extrabold text-xs bg-slate-900 text-emerald-400 px-3 py-1 rounded-lg border border-slate-800 flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="hash" class="w-3.5 h-3.5 text-emerald-400"></i>
+                ${item.trackingCode}
+              </span>
+              <button onclick="window.app.copyToClipboard('${item.trackingCode}')" title="Copy tracking code" class="p-1 rounded text-slate-400 hover:text-emerald-600 transition">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${item.activityType === 'parcel_request' ? 'bg-blue-50 text-blue-700 border border-blue-200' : item.activityType === 'parcel_delivery' ? 'bg-amber-50 text-amber-700 border border-amber-200' : item.activityType === 'lent_item' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">
+                ${item.categoryLabel}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold px-3 py-1 rounded-full ${statusBadge}">
+                ${(item.status || 'Active').replace(/_/g, ' ').toUpperCase()}
+              </span>
+              <span class="text-xs text-slate-400">
+                ${new Date(item.updatedAt || item.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+
+          <!-- Middle Row: Details -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-slate-100">
+            <div>
+              <h4 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                ${item.title}
+                ${item.reference ? `<span class="text-xs font-normal text-slate-500 font-mono">(Ref: ${item.reference})</span>` : ''}
+              </h4>
+              <p class="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                ${item.destination ? `<span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i> ${item.destination}</span>` : ''}
+                ${item.handoverLocation ? `<span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i> Handover: ${item.handoverLocation}</span>` : ''}
+                ${item.counterparty ? `<span class="flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i> ${item.counterparty}</span>` : ''}
+                ${item.dateRange ? `<span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> ${item.dateRange}</span>` : ''}
+              </p>
+            </div>
+
+            <div class="text-right whitespace-nowrap">
+              ${item.fee !== undefined ? `<div class="text-sm font-extrabold text-slate-900">₹${item.fee} <span class="text-[10px] font-normal text-slate-500">delivery fee</span></div>` : ''}
+              ${item.earnings !== undefined ? `<div class="text-sm font-extrabold text-emerald-700">+₹${item.earnings} <span class="text-[10px] font-normal text-slate-500">payout</span></div>` : ''}
+              ${item.dailyPrice !== undefined ? `<div class="text-sm font-extrabold text-purple-700">₹${item.dailyPrice}/day <span class="text-[10px] font-normal text-slate-500">deposit ₹${item.securityDeposit}</span></div>` : ''}
+              ${item.totalPayable !== undefined ? `<div class="text-sm font-extrabold text-slate-900">₹${item.totalPayable} <span class="text-[10px] font-normal text-slate-500">total (with deposit)</span></div>` : ''}
+            </div>
+          </div>
+
+          <!-- Bottom Row: OTP Notice & Action Buttons -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            <div>
+              ${item.otp ? `
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                  <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                  <span>Your Delivery Verification OTP:</span>
+                  <span class="font-mono font-extrabold text-sm bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-900 tracking-widest">${item.otp}</span>
+                </div>
+              ` : ''}
+              ${item.activityType === 'parcel_delivery' && (item.status === 'out_for_delivery' || item.status === 'collected') ? `
+                <span class="text-xs text-amber-700 font-medium flex items-center gap-1">
+                  <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                  Collect the 6-digit OTP from recipient upon handover.
+                </span>
+              ` : ''}
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="window.app.trackByCode('${item.trackingCode}')" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Track Live</span>
+              </button>
+
+              ${isParcel ? `
+                <button onclick="window.app.navigate('requester_dash')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+                  Details
+                </button>
+              ` : `
+                <button onclick="window.app.navigate('marketplace')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+                  Market
+                </button>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
   }
 
   // --------------------------------------------------------------------------
@@ -2411,7 +2700,214 @@
       navigate('marketplace', { search, sort });
     },
 
-    loadChatConversation
+    loadChatConversation,
+
+    switchActivityTab: (tab, filter = 'all') => {
+      const expView = document.getElementById('activity-explore-view');
+      const myView = document.getElementById('activity-my-view');
+      const btnExp = document.getElementById('tab-btn-explore');
+      const btnMy = document.getElementById('tab-btn-my');
+
+      if (tab === 'my') {
+        if (expView) expView.classList.add('hidden');
+        if (myView) myView.classList.remove('hidden');
+        if (btnExp) btnExp.className = 'px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900';
+        if (btnMy) btnMy.className = 'px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-white text-emerald-700 shadow-sm';
+        loadAndRenderMyActivities(filter);
+      } else {
+        if (expView) expView.classList.remove('hidden');
+        if (myView) myView.classList.add('hidden');
+        if (btnExp) btnExp.className = 'px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-white text-emerald-700 shadow-sm';
+        if (btnMy) btnMy.className = 'px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-slate-900';
+      }
+      if (window.lucide) window.lucide.createIcons();
+    },
+
+    filterMyActivities: (filter) => {
+      const input = document.getElementById('activity-search-code-input');
+      const q = input ? input.value : '';
+      renderFilteredActivitiesList(filter, q);
+    },
+
+    handleActivitySearchKey: (e) => {
+      const q = e.target.value;
+      if (e.key === 'Enter') {
+        window.app.searchOrTrackActivity();
+      } else {
+        renderFilteredActivitiesList(currentActivityFilter, q);
+      }
+    },
+
+    searchOrTrackActivity: async () => {
+      const input = document.getElementById('activity-search-code-input');
+      const codeVal = input ? input.value.trim() : '';
+      if (!codeVal) {
+        showToast('Please enter a tracking code or keyword to search.', 'warning');
+        return;
+      }
+      // If looks like a specific code, track it
+      if (codeVal.toUpperCase().startsWith('PN-PAR-') || codeVal.toUpperCase().startsWith('RNTL-') || codeVal.toUpperCase().startsWith('LEND-') || codeVal.toUpperCase().startsWith('BORW-') || codeVal.startsWith('par-') || codeVal.startsWith('bk-')) {
+        await window.app.trackByCode(codeVal);
+      } else {
+        renderFilteredActivitiesList('all', codeVal);
+      }
+    },
+
+    copyToClipboard: (text) => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      showToast('Tracking code copied: ' + text, 'success');
+    },
+
+    trackByCode: async (code) => {
+      try {
+        const res = await api('/api/activities/track/' + encodeURIComponent(code));
+        if (!res || !res.found) {
+          showToast('No record found for tracking code ' + code, 'error');
+          return;
+        }
+
+        const stages = res.type === 'parcel' 
+          ? [
+              { key: 'submitted', label: '1. Submitted' },
+              { key: 'accepted', label: '2. Accepted' },
+              { key: 'collected', label: '3. Collected' },
+              { key: 'out_for_delivery', label: '4. In Transit' },
+              { key: 'delivered', label: '5. Delivered' },
+              { key: 'completed', label: '6. Completed' }
+            ]
+          : [
+              { key: 'pending', label: '1. Requested' },
+              { key: 'accepted', label: '2. Accepted' },
+              { key: 'active', label: '3. Handed Over' },
+              { key: 'completed', label: '4. Returned' }
+            ];
+
+        const currentStageIndex = stages.findIndex(s => s.key === res.status);
+
+        const modalHtml = `
+          <div class="space-y-6">
+            <!-- Header -->
+            <div class="border-b border-slate-200 pb-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  Live Campus Tracking Hub
+                </span>
+                <span class="font-mono font-extrabold text-xs bg-slate-900 text-emerald-400 px-3 py-1 rounded-lg">
+                  ${res.trackingCode}
+                </span>
+              </div>
+              <h2 class="text-xl font-extrabold text-slate-900 mt-3">${res.title}</h2>
+              ${res.reference ? `<p class="text-xs text-slate-500 font-mono mt-0.5">Courier Ref: ${res.reference}</p>` : ''}
+            </div>
+
+            <!-- Visual Progress Tracker -->
+            <div>
+              <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Delivery / Rental Stage</span>
+              <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3">
+                ${stages.map((st, idx) => {
+                  const isDone = currentStageIndex >= idx;
+                  const isCurrent = currentStageIndex === idx;
+                  return `
+                    <div class="text-center p-2 rounded-xl border text-xs ${isCurrent ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-sm' : isDone ? 'bg-emerald-50 text-emerald-800 font-semibold border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'}">
+                      <div class="w-5 h-5 rounded-full mx-auto mb-1 flex items-center justify-center text-[10px] font-bold ${isCurrent ? 'bg-white text-emerald-700' : isDone ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}">
+                        ${isDone ? '✓' : idx + 1}
+                      </div>
+                      <span class="text-[10px] block leading-tight">${st.label.split('. ')[1]}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- OTP Highlight if requester -->
+            ${res.otp ? `
+              <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Delivery Security OTP</span>
+                    <p class="text-xs text-emerald-700 mt-0.5">Show this 6-digit code to your delivery partner upon parcel arrival:</p>
+                  </div>
+                  <span class="font-mono font-extrabold text-2xl bg-white px-3 py-1 rounded-xl border border-emerald-300 text-emerald-900 tracking-widest shadow-sm">${res.otp}</span>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Details Card -->
+            <div class="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              <div>
+                <span class="text-slate-400 block font-semibold">Requester / Borrower:</span>
+                <span class="font-bold text-slate-800 text-sm">${res.requesterName || res.borrowerName || 'Verified Student'}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block font-semibold">Partner / Owner:</span>
+                <span class="font-bold text-slate-800 text-sm">${res.partnerName || res.ownerName || 'Verified Student'}</span>
+              </div>
+              ${res.deliveryFee ? `
+                <div>
+                  <span class="text-slate-400 block font-semibold">Delivery Fee:</span>
+                  <span class="font-bold text-slate-800 text-sm">₹${res.deliveryFee}</span>
+                </div>
+              ` : ''}
+              ${res.totalPayable ? `
+                <div>
+                  <span class="text-slate-400 block font-semibold">Total Payable:</span>
+                  <span class="font-bold text-slate-800 text-sm">₹${res.totalPayable} (Deposit: ₹${res.securityDeposit})</span>
+                </div>
+              ` : ''}
+              <div>
+                <span class="text-slate-400 block font-semibold">Current Status:</span>
+                <span class="font-bold text-emerald-700 uppercase">${(res.status || '').replace(/_/g, ' ')}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block font-semibold">Last Updated:</span>
+                <span class="font-medium text-slate-700">${new Date(res.updatedAt || res.createdAt).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <!-- Audit History Timeline -->
+            ${res.history && res.history.length > 0 ? `
+              <div>
+                <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Status History Log</span>
+                <div class="mt-2 space-y-2 max-h-40 overflow-y-auto pr-1 text-xs">
+                  ${res.history.map(h => `
+                    <div class="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="font-bold text-slate-800 uppercase">${h.status.replace(/_/g, ' ')}</span>
+                      </div>
+                      <span class="text-slate-400 font-mono text-[11px]">${new Date(h.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Bottom Actions -->
+            <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+              <button onclick="window.app.copyToClipboard('${res.trackingCode}')" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-1.5">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Code
+              </button>
+              <button onclick="window.app.closeModal()" class="px-5 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">
+                Close
+              </button>
+            </div>
+          </div>
+        `;
+
+        openModal(modalHtml);
+      } catch (e) {
+        showToast('Error tracking request: ' + (e.message || e), 'error');
+      }
+    }
   };
 
   function getStatusBadge(status) {

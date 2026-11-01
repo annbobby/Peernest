@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'PeerNest static assets ready.'",
+  "outputDirectory": "src",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/(.*)", "destination": "/src/$1" }
+  ]
+}

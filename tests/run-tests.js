@@ -549,6 +549,35 @@ async function runAllTests() {
     assert.strictEqual(res.status, 200);
   });
 
+  // --------------------------------------------------------------------------
+  // MODULE 6: USER ACTIVITIES & UNIQUE CODE TRACKING
+  // --------------------------------------------------------------------------
+  console.log('\n--- MODULE 6: USER ACTIVITIES & UNIQUE CODE TRACKING ---');
+
+  await test('ACTIVITIES', 'Fetch all performed activities (parcels, rentals, lending, borrowing)', async () => {
+    const res = await makeRequest('/api/activities/my-all', {
+      headers: { authorization: 'Bearer ' + tokenAarav }
+    });
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.data.summary);
+    assert.ok(res.data.summary.totalActivities >= 1);
+    assert.ok(Array.isArray(res.data.parcelRequests));
+    assert.ok(res.data.parcelRequests[0].trackingCode.startsWith('PN-PAR-'));
+  });
+
+  await test('ACTIVITIES', 'Track down parcel request by unique tracking code', async () => {
+    const resAll = await makeRequest('/api/activities/my-all', {
+      headers: { authorization: 'Bearer ' + tokenAarav }
+    });
+    const code = resAll.data.parcelRequests[0].trackingCode;
+    const resTrack = await makeRequest('/api/activities/track/' + encodeURIComponent(code), {
+      headers: { authorization: 'Bearer ' + tokenAarav }
+    });
+    assert.strictEqual(resTrack.status, 200);
+    assert.strictEqual(resTrack.data.found, true);
+    assert.strictEqual(resTrack.data.trackingCode, code);
+  });
+
   // Summary
   const totalElapsed = Date.now() - startTime;
   console.log('\n================================================================');
