@@ -1,31 +1,12 @@
 import Head from 'next/head';
+import Script from 'next/script';
 import { useEffect } from 'react';
 
 export default function Home() {
   useEffect(() => {
-    // 1. Inject Tailwind CDN dynamically
-    if (!document.getElementById('tailwind-script')) {
-      const tw = document.createElement('script');
-      tw.id = 'tailwind-script';
-      tw.src = 'https://cdn.tailwindcss.com';
-      document.head.appendChild(tw);
-    }
-
-    // 2. Inject Lucide Icons dynamically
-    if (!document.getElementById('lucide-script')) {
-      const luc = document.createElement('script');
-      luc.id = 'lucide-script';
-      luc.src = 'https://unpkg.com/lucide@latest';
-      document.head.appendChild(luc);
-    }
-
-    // 3. Inject PeerNest Application Logic
-    if (!document.getElementById('peernest-app-script')) {
-      const script = document.createElement('script');
-      script.id = 'peernest-app-script';
-      script.src = '/app.js';
-      script.async = true;
-      document.body.appendChild(script);
+    // If app.js was already loaded, initialize PeerNest immediately
+    if (typeof window !== 'undefined' && window.initPeerNest) {
+      window.initPeerNest();
     }
   }, []);
 
@@ -34,10 +15,20 @@ export default function Home() {
       <Head>
         <title>PeerNest | VIT Vellore Campus Convenience Platform</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>" />
       </Head>
 
-      <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+      {/* Load Application Logic via Next Script */}
+      <Script
+        src="/app.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (typeof window !== 'undefined' && window.initPeerNest) {
+            window.initPeerNest();
+          }
+        }}
+      />
+
+      <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
         {/* Toast Notification Container */}
         <div id="toast-container" className="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 

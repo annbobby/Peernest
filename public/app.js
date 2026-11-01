@@ -2950,5 +2950,12 @@
     }
   }
 
-  window.addEventListener('DOMContentLoaded', init);
+  window.initPeerNest = init;
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', init);
+    } else {
+      setTimeout(init, 0);
+    }
+  }
 })();
