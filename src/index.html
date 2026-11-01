@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PeerNest | VIT Vellore Campus Convenience Platform</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+  
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            vit: {
+              blue: '#002B49',
+              gold: '#C59B27',
+              accent: '#0284c7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- Global Navigation Bar -->
+  <header id="app-navbar" class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 transition-all"></header>
+
+  <!-- Main Dynamic View Container -->
+  <main id="app-content" class="flex-1 flex flex-col"></main>
+
+  <!-- Global Modal Container -->
+  <div id="modal-container" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"></div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-8 mt-auto text-slate-500 text-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">PN</div>
+        <span class="font-semibold text-slate-800">PeerNest</span>
+        <span class="text-xs bg-emerald-50 text-emerald-700 font-medium px-2 py-0.5 rounded-full border border-emerald-200">VIT Vellore Exclusive</span>
+      </div>
+      <p class="text-xs text-slate-400 text-center md:text-left">
+        Designed strictly for verified students with <span class="font-mono text-slate-600">@vitstudent.ac.in</span> institutional emails. No external data sharing.
+      </p>
+      <div class="flex items-center gap-6 text-xs font-medium">
+        <button onclick="window.app.navigate('terms')" class="hover:text-emerald-600 transition">Terms & Safety</button>
+        <button onclick="window.app.navigate('privacy')" class="hover:text-emerald-600 transition">Privacy Policy</button>
+        <button onclick="window.app.navigate('protection')" class="hover:text-emerald-600 transition">Protection Reserve</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="/app.js"></script>
+</body>
+</html>

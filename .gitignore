@@ -1,0 +1,30 @@
+# PeerNest Git Ignore Rules
+
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Local Environment
+.env
+.env.local
+.env.*.local
+
+# SQLite Database local files (auto-generated on startup via seed)
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+server/data/*.db-journal
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# System & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
