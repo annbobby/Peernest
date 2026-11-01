@@ -4,30 +4,22 @@
   "description": "PeerNest - Full-Stack Campus Convenience Platform designed exclusively for students of VIT Vellore",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
     "dev": "node server/index.js",
-    "build": "echo \"PeerNest build completed successfully.\"",
-    "vercel-build": "echo \"PeerNest vercel build completed successfully.\"",
+    "start": "node server/index.js",
+    "build": "next build",
     "test": "node tests/run-tests.js",
     "seed": "node server/seed.js"
   },
-  "keywords": [
-    "peernest",
-    "vit-vellore",
-    "campus-delivery",
-    "rental-marketplace",
-    "student-convenience",
-    "gps-routing",
-    "full-stack"
-  ],
-  "author": "PeerNest Team",
-  "license": "MIT",
   "dependencies": {
+    "next": "^14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "@supabase/supabase-js": "^2.45.0",
     "razorpay": "^2.9.4"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.1"
   },
   "engines": {
     "node": ">=20.0.0"

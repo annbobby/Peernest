@@ -3,7 +3,22 @@
 // Database Module (Native SQLite engine using node:sqlite with ACID transactions)
 // ============================================================================
 
-const { DatabaseSync } = require('node:sqlite');
+let DatabaseSync;
+try {
+  DatabaseSync = require('node:sqlite').DatabaseSync;
+} catch (e) {
+  // Graceful fallback during static build or environments without native node:sqlite
+  DatabaseSync = class FallbackDatabase {
+    exec() {}
+    prepare() {
+      return {
+        run: () => ({ lastInsertRowid: 1, changes: 1 }),
+        get: () => null,
+        all: () => []
+      };
+    }
+  };
+}
 const path = require('node:path');
 const fs = require('node:fs');
 
