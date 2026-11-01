@@ -3,7 +3,23 @@ import { useEffect } from 'react';
 
 export default function Home() {
   useEffect(() => {
-    // Dynamically inject app.js if not already present
+    // 1. Inject Tailwind CDN dynamically
+    if (!document.getElementById('tailwind-script')) {
+      const tw = document.createElement('script');
+      tw.id = 'tailwind-script';
+      tw.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(tw);
+    }
+
+    // 2. Inject Lucide Icons dynamically
+    if (!document.getElementById('lucide-script')) {
+      const luc = document.createElement('script');
+      luc.id = 'lucide-script';
+      luc.src = 'https://unpkg.com/lucide@latest';
+      document.head.appendChild(luc);
+    }
+
+    // 3. Inject PeerNest Application Logic
     if (!document.getElementById('peernest-app-script')) {
       const script = document.createElement('script');
       script.id = 'peernest-app-script';
@@ -19,8 +35,6 @@ export default function Home() {
         <title>PeerNest | VIT Vellore Campus Convenience Platform</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>" />
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://unpkg.com/lucide@latest"></script>
       </Head>
 
       <div className="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">

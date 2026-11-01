@@ -1,17 +1,5 @@
 // Next.js Catch-All API Handler for PeerNest Backend Routes
 let handleRequest;
-try {
-  handleRequest = require('../../../server/index').handleRequest;
-} catch (e) {
-  try {
-    handleRequest = require('../../server/index').handleRequest;
-  } catch (e2) {
-    handleRequest = (req, res) => {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok' }));
-    };
-  }
-}
 
 export const config = {
   api: {
@@ -21,5 +9,19 @@ export const config = {
 };
 
 export default function handler(req, res) {
+  if (!handleRequest) {
+    try {
+      handleRequest = require('../../../server/index').handleRequest;
+    } catch (e) {
+      try {
+        handleRequest = require('../../server/index').handleRequest;
+      } catch (e2) {
+        handleRequest = (q, s) => {
+          s.writeHead(200, { 'Content-Type': 'application/json' });
+          s.end(JSON.stringify({ status: 'ok', message: 'PeerNest API Server' }));
+        };
+      }
+    }
+  }
   return handleRequest(req, res);
 }
