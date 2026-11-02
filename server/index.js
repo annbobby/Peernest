@@ -127,8 +127,8 @@ function handleRequest(req, res) {
   const pathname = parsedUrl.pathname;
   req.query = Object.fromEntries(parsedUrl.searchParams.entries());
 
-  // If body is already parsed (e.g. Vercel serverless functions)
-  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+  // If method has no body (GET, HEAD) or body is already parsed (e.g. Vercel serverless functions)
+  if (req.method === 'GET' || req.method === 'HEAD' || (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0)) {
     const matched = router.match(req.method, pathname);
     if (matched) {
       req.params = matched.params;

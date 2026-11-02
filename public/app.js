@@ -50,7 +50,7 @@
   }
 
   // API Client Helper
-  const API_BASE = (window.location.protocol === 'file:' || !window.location.port)
+  const API_BASE = (window.location.protocol === 'file:')
     ? 'http://localhost:3000'
     : '';
 
